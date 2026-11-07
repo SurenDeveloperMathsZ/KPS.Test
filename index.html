@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KPS Test Pro</title>
+<style>
+  :root {
+    --bg: #1e1e2f; --panel: rgba(255,255,255,0.05); --border: rgba(255,255,255,0.1);
+    --text: #fff; --primary: #8b9dff; --accent: #ffb347; --success: #67e8a0; --danger: #ff6b6b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: linear-gradient(135deg, var(--bg) 0%, #2d2d44 100%);
+    color: var(--text); min-height: 100vh;
+    display: flex; align-items: center; justify-content: center; padding: 20px;
+    overflow: hidden;
+  }
+  
+  .app {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 24px; padding: 25px; width: 100%; max-width: 680px;
+    text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    position: relative; z-index: 10; backdrop-filter: blur(10px);
+    transition: transform 0.2s ease;
+  }
+  .app.shake { animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both; }
+  @keyframes shake {
+    10%, 90% { transform: translate3d(-1px, 0, 0); }
+    20%, 80% { transform: translate3d(2px, 0, 0); }
+    30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+    40%, 60% { transform: translate3d(4px, 0, 0); }
+  }
+  .app.record-flash::after {
+    content: ''; position: absolute; inset: 0; pointer-events: none;
+    animation: flash 1s ease-out; border-radius: 24px;
+  }
+  @keyframes flash {
+    0% { box-shadow: inset 0 0 150px rgba(255, 215, 0, 0.8); }
+    100% { box-shadow: inset 0 0 150px rgba(255, 215, 0, 0); }
+  }
+
+  .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+  h1 { font-size: 1.2rem; color: var(--primary); text-align: left; }
+  .header-icons { display: flex; gap: 8px; }
+  .icon-btn {
+    background: rgba(255,255,255,0.08); border: 1px solid var(--border);
+    color: #ccc; width: 36px; height: 36px; border-radius: 10px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem; transition: 0.2s;
+  }
+  .icon-btn:hover, .icon-btn.active { background: rgba(255,255,255,0.15); color: #fff; border-color: var(--primary); }
+  
+  .dropdown {
+    position: absolute; top: 70px; left: 25px; right: 25px;
+    background: rgba(30, 30, 47, 0.95); border: 1px solid var(--border);
+    border-radius: 16px; padding: 20px; text-align: left; display: none;
+    z-index: 100; box-shadow: 0 10px 30px rgba(0,0,0,0.5); backdrop-filter: blur(15px);
+  }
+  .dropdown.open { display: block; animation: slideDown 0.2s ease-out; }
+  @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+  
+  .dropdown h3 { font-size: 0.9rem; color: #aaa; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 1px; }
+  .setting-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; font-size: 0.9rem; }
+  
+  .toggle { position: relative; width: 40px; height: 22px; appearance: none; background: rgba(255,255,255,0.1); border-radius: 20px; outline: none; cursor: pointer; transition: 0.3s; }
+  .toggle:checked { background: var(--primary); }
+  .toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; background: #fff; border-radius: 50%; transition: 0.3s; }
+  .toggle:checked::after { transform: translateX(18px); }
+
+  .timer-panel { display: flex; justify-content: center; gap: 6px; flex-wrap: wrap; margin-bottom: 15px; transition: 0.3s; }
+  .timer-panel.running { opacity: 0.3; pointer-events: none; }
+  .timer-btn { background: transparent; border: 1px solid var(--border); color: #aaa; padding: 5px 10px; border-radius: 8px; cursor: pointer; font-size: 0.8rem; font-weight: 600; transition: 0.2s; }
+  .timer-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+  .timer-btn.active { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; border-color: transparent; }
+  
+  .custom-time { width: 50px; background: rgba(0,0,0,0.3); border: 1px solid var(--border); color: #fff; border-radius: 8px; text-align: center; font-size: 0.8rem; padding: 4px; outline: none; }
+  .custom-time:focus { border-color: var(--primary); }
+
+  .stats { display: flex; justify-content: center; gap: 20px; margin: 5px 0 10px; flex-wrap: wrap; }
+  .stat-block { display: flex; flex-direction: column; align-items: center; min-width: 90px; }
+  .stat-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: #777; margin-bottom: 2px; }
+  
+  .counter { font-size: 3.5rem; font-weight: 700; color: var(--primary); text-shadow: 0 0 20px rgba(102,126,234,0.5); font-variant-numeric: tabular-nums; }
+  .counter.masked { filter: blur(12px); opacity: 0.3; }
+  .time-left { font-size: 2.5rem; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .time-left.warning { color: var(--danger); }
+  .kps { font-size: 2.5rem; font-weight: 700; color: var(--success); font-variant-numeric: tabular-nums; transition: 0.3s; }
+  .kps.dim { color: #4a7a5e; text-shadow: none; }
+  .kps.max { color: var(--accent); text-shadow: 0 0 15px rgba(255,179,71,0.4); }
+
+  .graph-container { width: 100%; height: 30px; margin-bottom: 10px; display: none; opacity: 0; transition: 0.3s; align-items: flex-end; gap: 2px; }
+  .graph-container.visible { display: flex; opacity: 1; }
+  .graph-bar { flex: 1; background: var(--primary); border-radius: 2px 2px 0 0; height: 2px; transition: height 0.1s; }
+
+  .progress-container { width: 100%; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; margin-bottom: 15px; overflow: hidden; opacity: 0; transition: 0.3s; }
+  .progress-container.visible { opacity: 1; }
+  .progress-bar { height: 100%; width: 100%; background: linear-gradient(90deg, #667eea, #764ba2); transition: width 0.1s linear; }
+
+  .keys-display { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin-bottom: 15px; }
+  .key {
+    width: 46px; height: 46px; display: flex; align-items: center; justify-content: center;
+    font-size: 1.2rem; font-weight: 700; background: rgba(255,255,255,0.08);
+    border: 2px solid var(--border); border-radius: 10px; color: var(--primary);
+    transition: 0.07s ease-out; user-select: none;
+  }
+  .key:hover { border-color: var(--primary); color: #fff; background: rgba(255,255,255,0.12); }
+  .key.active { background: linear-gradient(135deg, #667eea, #764ba2); border-color: var(--primary); color: #fff; transform: translateY(-4px) scale(1.15); box-shadow: 0 8px 15px rgba(102,126,234,0.6); }
+  .keys-display.disabled .key { opacity: 0.2; transform: none !important; box-shadow: none !important; background: rgba(255,255,255,0.03); border-color: transparent; pointer-events: none; }
+  .keys-display.waiting .key { animation: pulse 1.5s infinite; border-color: var(--primary); }
+  .key.mirror-target { border-color: var(--danger); box-shadow: 0 0 15px rgba(255,107,107,0.5); animation: pulseRed 1s infinite; }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(102,126,234, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(102,126,234, 0); } 100% { box-shadow: 0 0 0 0 rgba(102,126,234, 0); } }
+  @keyframes pulseRed { 0% { box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(255, 107, 107, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 107, 107, 0); } }
+
+  .status { margin: 10px 0; font-size: 0.85rem; color: var(--primary); min-height: 2.8em; font-weight: 600; line-height: 1.3; display: flex; align-items: center; justify-content: center; text-align: center; }
+  .status.finished { color: var(--accent); }
+  .status.ready { color: var(--success); }
+  .status.record { color: #ffd700; font-size: 0.95rem; text-shadow: 0 0 10px rgba(255,215,0,0.6); animation: recordPulse 1s infinite alternate; }
+  @keyframes recordPulse { from { transform: scale(1); } to { transform: scale(1.02); } }
+
+  .controls { display: flex; justify-content: center; gap: 10px; margin-top: 10px; }
+  .btn { background: rgba(255,255,255,0.08); border: 1px solid var(--border); color: #ccc; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: 0.2s; }
+  .btn:hover { background: rgba(255,255,255,0.15); color: #fff; }
+  .btn.danger { border-color: var(--danger); color: var(--danger); display: none; }
+  .btn.danger:hover { background: rgba(255,107,107,0.1); }
+
+  .equalizer { display: flex; justify-content: center; gap: 3px; height: 15px; margin-top: 15px; align-items: flex-end; opacity: 0.7; }
+  .eq-bar { width: 4px; height: 2px; background: var(--primary); border-radius: 2px; transition: height 0.1s; }
+
+  .hall-of-fame { margin-top: 15px; font-size: 0.8rem; color: #888; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 10px; display: none; justify-content: center; gap: 15px; flex-wrap: wrap; }
+  .hall-of-fame.visible { display: flex; }
+  .hall-of-fame span { color: var(--accent); font-weight: bold; }
+  
+  .achievements-list { display: flex; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto; padding-right: 5px; }
+  .ach-item { display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.05); padding: 8px 12px; border-radius: 8px; font-size: 0.85rem; color: #aaa; transition: 0.2s; }
+  .ach-item.unlocked { color: #fff; background: rgba(255,215,0,0.1); border: 1px solid rgba(255,215,0,0.3); }
+  .ach-icon { font-size: 1.2rem; filter: grayscale(1); }
+  .ach-item.unlocked .ach-icon { filter: none; }
+  
+  .confetti { position: absolute; width: 8px; height: 8px; z-index: 1; pointer-events: none; }
+  @keyframes fall { 0% { opacity: 1; transform: translateY(0) rotate(0deg); } 100% { opacity: 0; transform: translateY(100vh) rotate(720deg); } }
+</style>
+</head>
+<body>
+  <div class="app" id="app">
+    
+    <div class="header">
+      <h1>KPS Test Pro</h1>
+      <div class="header-icons">
+        <button class="icon-btn" id="iconSound" title="Звук (вкл/выкл)">🔇</button>
+        <button class="icon-btn" id="iconGraph" title="График скорости">📊</button>
+        <button class="icon-btn" id="iconSettings" title="Настройки">⚙️</button>
+        <button class="icon-btn" id="iconAch" title="Ачивки">🛡️</button>
+      </div>
+    </div>
+
+    <div class="dropdown" id="menuSettings">
+      <h3>Настройки и Режимы</h3>
+      
+      <div class="setting-row">
+        <span>Клавиши для теста</span>
+        <div style="display:flex; gap:5px;">
+          <input type="text" id="keysInput" value="WDFT" style="width:100px; background:rgba(0,0,0,0.3); border:1px solid var(--border); color:#fff; padding:5px; border-radius:5px; text-align:center;" maxlength="10">
+          <button class="btn" id="saveKeysBtn" style="padding: 4px 8px;">OK</button>
+        </div>
+      </div>
+      
+      <div class="setting-row">
+        <span>Никнейм (для рекордов)</span>
+        <input type="text" id="nicknameInput" placeholder="Игрок" style="width:100px; background:rgba(0,0,0,0.3); border:1px solid var(--border); color:#fff; padding:5px; border-radius:5px;">
+      </div>
+
+      <div class="setting-row">
+        <span>Режим "Зеркало" (ловушки)</span>
+        <input type="checkbox" class="toggle" id="toggleMirror">
+      </div>
+      
+      <div class="setting-row">
+        <span>Режим "Шторка" (скрыть счёт)</span>
+        <input type="checkbox" class="toggle" id="toggleBlur">
+      </div>
+      
+      <div class="setting-row">
+        <span>Режим "До последнего" (цель)</span>
+        <input type="number" id="goalClicksInput" placeholder="кликов" style="width:80px; background:rgba(0,0,0,0.3); border:1px solid var(--border); color:#fff; padding:4px; border-radius:5px;" min="1">
+      </div>
+    </div>
+
+    <div class="dropdown" id="menuAch">
+      <h3>Достижения</h3>
+      <div class="achievements-list" id="achList"></div>
+    </div>
+
+    <div class="timer-panel" id="timerPanel">
+      <button class="timer-btn" data-time="5">5 сек</button>
+      <button class="timer-btn" data-time="10">10 сек</button>
+      <button class="timer-btn" data-time="20">20 сек</button>
+      <button class="timer-btn" data-time="30">30 сек</button>
+      <button class="timer-btn" data-time="60">1 мин</button>
+      <button class="timer-btn" data-time="120">2 мин</button>
+      <button class="timer-btn" id="btnCustom">Своё</button>
+      <input type="number" id="customInput" class="custom-time" placeholder="сек" min="1" max="999" style="display:none;">
+    </div>
+
+    <div class="graph-container" id="graphContainer"></div>
+    <div class="progress-container" id="progressContainer">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+
+    <div class="stats">
+      <div class="stat-block">
+        <div class="stat-label">Всего</div>
+        <div class="counter" id="counter">0</div>
+      </div>
+      <div class="stat-block">
+        <div class="stat-label" id="timeLabel">Время</div>
+        <div class="time-left" id="timeLeft">--</div>
+      </div>
+      <div class="stat-block">
+        <div class="stat-label" id="kpsLabel">KPS</div>
+        <div class="kps dim" id="kps">0.0</div>
+      </div>
+    </div>
+
+    <div class="keys-display disabled" id="keysDisplay"></div>
+
+    <div class="controls">
+      <button class="btn" id="cancelBtn" style="display:none; border-color:var(--danger); color:var(--danger);">Отменить</button>
+    </div>
+
+    <div class="status" id="status">Выберите время для старта</div>
+    
+    <div class="equalizer" id="equalizer">
+      <div class="eq-bar"></div><div class="eq-bar"></div><div class="eq-bar"></div>
+      <div class="eq-bar"></div><div class="eq-bar"></div><div class="eq-bar"></div>
+      <div class="eq-bar"></div><div class="eq-bar"></div><div class="eq-bar"></div>
+    </div>
+
+    <div class="hall-of-fame" id="hallOfFame">
+      <span id="hofTitle">Лучшие:</span>
+      <span id="best1">-</span>
+      <span id="best2">-</span>
+      <span id="best3">-</span>
+    </div>
+  </div>
+
+<script>
+  window.onload = function () {
+    var DEFAULT_KEYS = ['W', 'D', 'F', 'T'];
+
+    var appEl = document.getElementById('app');
+    var counterEl = document.getElementById('counter');
+    var kpsEl = document.getElementById('kps');
+    var kpsLabelEl = document.getElementById('kpsLabel');
+    var timeLeftEl = document.getElementById('timeLeft');
+    var timeLabelEl = document.getElementById('timeLabel');
+    var keysDisplayEl = document.getElementById('keysDisplay');
+    var statusEl = document.getElementById('status');
+    var timerPanel = document.getElementById('timerPanel');
+    var btnCustom = document.getElementById('btnCustom');
+    var customInput = document.getElementById('customInput');
+    var cancelBtn = document.getElementById('cancelBtn');
+    var progressContainer = document.getElementById('progressContainer');
+    var progressBar = document.getElementById('progressBar');
+    var graphContainer = document.getElementById('graphContainer');
+    var hallOfFame = document.getElementById('hallOfFame');
+    var eqBars = document.querySelectorAll('.eq-bar');
+
+    var iconGraph = document.getElementById('iconGraph');
+    var iconSettings = document.getElementById('iconSettings');
+    var iconAch = document.getElementById('iconAch');
+    var iconSound = document.getElementById('iconSound');
+    var menuSettings = document.getElementById('menuSettings');
+    var menuAch = document.getElementById('menuAch');
+    var keysInput = document.getElementById('keysInput');
+    var saveKeysBtn = document.getElementById('saveKeysBtn');
+    var toggleMirror = document.getElementById('toggleMirror');
+    var toggleBlur = document.getElementById('toggleBlur');
+    var goalClicksInput = document.getElementById('goalClicksInput');
+    var achListEl = document.getElementById('achList');
+
+    var activeKeys = DEFAULT_KEYS.slice();
+    var keyElements = {}; 
+    var testState = 'idle';
+    var count = 0;
+    var totalTime = 0;
+    var timeLeft = 0;
+    var testInterval = null;
+    var hitTimestamps = [];
+    var maxKps = 0;
+    var KPS_WINDOW = 1000;
+    
+    var isMirrorMode = false;
+    var isBlurMode = false;
+    var goalClicks = 0;
+    var mirrorTarget = null;
+    var graphData = [];
+    
+    // НАСТРОЙКА ЗВУКА (по умолчанию выключен)
+    var isSoundEnabled = false;
+
+    var achievements = {
+      'sniper': { name: 'Снайпер', desc: 'Сделать 60 кликов ровно за 1 минуту', unlocked: false, icon: '🎯' },
+      'sprinter': { name: 'Спринтер', desc: 'Пик 40+ на 5 секундах', unlocked: false, icon: '⚡' },
+      'marathon': { name: 'Марафонец', desc: 'Сделать 800+ кликов за 30 секунд', unlocked: false, icon: '🏃' },
+      'perfect': { name: 'Идеальный ритм', desc: '2 секунды подряд с одинаковым KPS', unlocked: false, icon: '🎵' },
+      'speed_demon': { name: 'Демон скорости', desc: 'Средний KPS 30+ на 10 секундах', unlocked: false, icon: '👹' }
+    };
+
+    var records = JSON.parse(localStorage.getItem('kpsRecordsPro')) || {};
+
+    function init() {
+      var savedKeys = localStorage.getItem('kpsKeysPro');
+      if (savedKeys) activeKeys = sanitizeKeys(savedKeys);
+      keysInput.value = activeKeys.join('');
+      
+      renderKeys();
+      renderAchievements();
+      updateSettingsFromStorage();
+      
+      for (var i = 0; i < 30; i++) {
+        var bar = document.createElement('div');
+        bar.className = 'graph-bar';
+        graphContainer.appendChild(bar);
+      }
+    }
+
+    function updateSettingsFromStorage() {
+      if (localStorage.getItem('kpsMirror') === 'true') { toggleMirror.checked = true; isMirrorMode = true; }
+      if (localStorage.getItem('kpsBlur') === 'true') { toggleBlur.checked = true; isBlurMode = true; }
+      var goal = localStorage.getItem('kpsGoal');
+      if (goal) { goalClicksInput.value = goal; goalClicks = parseInt(goal) || 0; }
+    }
+
+    iconSound.addEventListener('click', function() {
+      isSoundEnabled = !isSoundEnabled;
+      this.textContent = isSoundEnabled ? '🔊' : '🔇';
+      this.classList.toggle('active', isSoundEnabled);
+    });
+
+    iconGraph.addEventListener('click', function() {
+      graphContainer.classList.toggle('visible');
+      this.classList.toggle('active');
+    });
+
+    iconSettings.addEventListener('click', function() {
+      menuSettings.classList.toggle('open');
+      menuAch.classList.remove('open');
+      this.classList.toggle('active');
+      iconAch.classList.remove('active');
+    });
+
+    iconAch.addEventListener('click', function() {
+      menuAch.classList.toggle('open');
+      menuSettings.classList.remove('open');
+      this.classList.toggle('active');
+      iconSettings.classList.remove('active');
+    });
+
+    saveKeysBtn.addEventListener('click', function() {
+      activeKeys = sanitizeKeys(keysInput.value);
+      keysInput.value = activeKeys.join('');
+      localStorage.setItem('kpsKeysPro', activeKeys.join(''));
+      renderKeys();
+      menuSettings.classList.remove('open');
+      iconSettings.classList.remove('active');
+      if (testState === 'idle') setStatus('Клавиши обновлены: ' + activeKeys.join(' '));
+    });
+
+    toggleMirror.addEventListener('change', function() {
+      isMirrorMode = this.checked;
+      localStorage.setItem('kpsMirror', isMirrorMode);
+    });
+
+    toggleBlur.addEventListener('change', function() {
+      isBlurMode = this.checked;
+      localStorage.setItem('kpsBlur', isBlurMode);
+      if (isBlurMode) counterEl.classList.add('masked');
+      else counterEl.classList.remove('masked');
+    });
+
+    goalClicksInput.addEventListener('change', function() {
+      goalClicks = parseInt(this.value) || 0;
+      localStorage.setItem('kpsGoal', goalClicks);
+    });
+
+    function sanitizeKeys(str) {
+      var clean = (str || '').toUpperCase().split('').filter(function(ch) { return /[A-ZА-ЯЁ0-9]/.test(ch); });
+      var unique = [];
+      for (var i = 0; i < clean.length; i++) { if (unique.indexOf(clean[i]) === -1) unique.push(clean[i]); }
+      return unique.length ? unique : DEFAULT_KEYS.slice();
+    }
+
+    function renderKeys() {
+      keysDisplayEl.innerHTML = '';
+      keyElements = {}; 
+      for (var i = 0; i < activeKeys.length; i++) {
+        var letter = activeKeys[i];
+        var el = document.createElement('div');
+        el.className = 'key';
+        el.textContent = letter;
+        keysDisplayEl.appendChild(el);
+        keyElements[letter] = el;
+      }
+    }
+
+    function renderAchievements() {
+      achListEl.innerHTML = '';
+      for (var key in achievements) {
+        var ach = achievements[key];
+        var el = document.createElement('div');
+        el.className = 'ach-item' + (ach.unlocked ? ' unlocked' : '');
+        el.innerHTML = `<div class="ach-icon">${ach.icon}</div>
+                        <div><b>${ach.name}</b><br><small style="font-size:0.75rem; color:#888">${ach.desc}</small></div>`;
+        achListEl.appendChild(el);
+      }
+    }
+
+    function unlockAchievement(key) {
+      if (achievements[key] && !achievements[key].unlocked) {
+        achievements[key].unlocked = true;
+        localStorage.setItem('kpsAch_' + key, 'true');
+        renderAchievements();
+        if (isSoundEnabled) playSound('record');
+      }
+    }
+
+    for (var key in achievements) {
+      if (localStorage.getItem('kpsAch_' + key) === 'true') achievements[key].unlocked = true;
+    }
+
+    function setStatus(msg, className) { 
+      statusEl.textContent = msg; 
+      statusEl.className = 'status';
+      if (className) statusEl.classList.add(className);
+    }
+
+    function flashKey(letter) {
+      var targetLetter = letter;
+      var ruMap = {'Ц':'W', 'В':'D', 'А':'F', 'Е':'T'};
+      if (ruMap[letter]) targetLetter = ruMap[letter];
+      
+      var el = keyElements[targetLetter];
+      if (!el) return;
+
+      el.classList.add('active');
+      setTimeout(function() { el.classList.remove('active'); }, 70);
+
+      eqBars.forEach(function(bar) {
+        bar.style.height = Math.random() * 15 + 2 + 'px';
+        setTimeout(function() { bar.style.height = '2px'; }, 100);
+      });
+    }
+
+    function formatTime(seconds) {
+      if (seconds >= 60) {
+        var m = Math.floor(seconds / 60);
+        var s = seconds % 60;
+        return m + "м " + (s < 10 ? "0" : "") + s + "с";
+      }
+      return seconds + "с";
+    }
+
+    function resetTest() {
+      testState = 'idle';
+      clearInterval(testInterval);
+      count = 0;
+      hitTimestamps = [];
+      maxKps = 0;
+      graphData = [];
+      counterEl.textContent = '0';
+      kpsEl.textContent = '0.0';
+      kpsEl.classList.remove('max');
+      kpsEl.classList.add('dim');
+      kpsLabelEl.textContent = 'KPS';
+      
+      keysDisplayEl.className = 'keys-display disabled';
+      timerPanel.className = 'timer-panel'; 
+      cancelBtn.style.display = 'none';
+      progressContainer.classList.remove('visible');
+      progressBar.style.width = '100%';
+      appEl.classList.remove('record-flash', 'shake');
+      
+      timeLeft = 0;
+      totalTime = 0;
+      timeLeftEl.textContent = '--';
+      timeLeftEl.classList.remove('warning');
+      timeLabelEl.textContent = 'Время';
+      
+      setStatus('Выберите время для старта');
+      document.querySelectorAll('.timer-btn').forEach(function(b) { b.classList.remove('active'); });
+      hallOfFame.classList.remove('visible');
+      
+      var bars = graphContainer.querySelectorAll('.graph-bar');
+      bars.forEach(function(b) { b.style.height = '2px'; });
+      
+      document.querySelectorAll('.key').forEach(function(k) { k.classList.remove('mirror-target'); });
+    }
+
+    function prepareTest(seconds) {
+      if (testState === 'running') return;
+      resetTest();
+      
+      totalTime = seconds;
+      timeLeft = seconds;
+      testState = 'ready';
+      
+      timeLeftEl.textContent = formatTime(timeLeft);
+      timeLabelEl.textContent = 'Готов?';
+      
+      keysDisplayEl.className = 'keys-display waiting';
+      cancelBtn.style.display = 'block';
+      
+      setStatus('Нажми любую клавишу для старта!', 'ready');
+      
+      document.querySelectorAll('.timer-btn').forEach(function(b) {
+        if (parseInt(b.getAttribute('data-time')) === seconds) b.classList.add('active');
+        else b.classList.remove('active');
+      });
+
+      var title = 'Лучшие за ' + formatTime(seconds) + ':';
+      document.getElementById('hofTitle').textContent = title;
+      var r = records[seconds] || [];
+      document.getElementById('best1').textContent = r[0] ? r[0] + ' кл.' : '-';
+      document.getElementById('best2').textContent = r[1] ? r[1] + ' кл.' : '-';
+      document.getElementById('best3').textContent = r[2] ? r[2] + ' кл.' : '-';
+      hallOfFame.classList.add('visible');
+    }
+
+    function startTest() {
+      testState = 'running';
+      keysDisplayEl.className = 'keys-display';
+      timerPanel.classList.add('running');
+      setStatus('Вперёд! Жми как можно быстрее!');
+      
+      progressContainer.classList.add('visible');
+      progressBar.style.width = '100%';
+      
+      if (isMirrorMode) pickNewMirrorTarget();
+      
+      var startTime = Date.now();
+      
+      testInterval = setInterval(function() {
+        var elapsed = (Date.now() - startTime) / 1000;
+        timeLeft = totalTime - elapsed;
+        
+        if (goalClicks > 0 && count >= goalClicks) { endTest(); return; }
+        var percent = (timeLeft / totalTime) * 100;
+        progressBar.style.width = percent + '%';
+
+        if (timeLeft <= 0) { timeLeft = 0; endTest(); } 
+        else {
+          timeLeftEl.textContent = formatTime(Math.ceil(timeLeft));
+          if (timeLeft <= 3) timeLeftEl.classList.add('warning');
+          recalcKps();
+        }
+      }, 50);
+    }
+
+    function pickNewMirrorTarget() {
+      document.querySelectorAll('.key').forEach(function(k) { k.classList.remove('mirror-target'); });
+      if (activeKeys.length === 0) return;
+      var randIndex = Math.floor(Math.random() * activeKeys.length);
+      mirrorTarget = activeKeys[randIndex];
+      if (keyElements[mirrorTarget]) keyElements[mirrorTarget].classList.add('mirror-target');
+    }
+
+    function endTest() {
+      clearInterval(testInterval);
+      testState = 'idle';
+      keysDisplayEl.className = 'keys-display disabled';
+      timeLeftEl.textContent = '0с';
+      timeLeftEl.classList.remove('warning');
+      timeLabelEl.textContent = 'Завершено';
+      progressBar.style.width = '0%';
+      
+      timerPanel.className = 'timer-panel';
+      cancelBtn.style.display = 'none';
+      document.querySelectorAll('.key').forEach(function(k) { k.classList.remove('mirror-target'); });
+
+      var avgKps = (count / totalTime).toFixed(1);
+      
+      kpsLabelEl.textContent = 'Макс. KPS';
+      kpsEl.textContent = maxKps.toFixed(1);
+      kpsEl.classList.remove('dim');
+      kpsEl.classList.add('max');
+      
+      if (totalTime === 60 && count === 60) unlockAchievement('sniper');
+      if (totalTime === 5 && maxKps >= 40) unlockAchievement('sprinter');
+      if (totalTime === 30 && count >= 800) unlockAchievement('marathon');
+      if (totalTime === 10 && avgKps >= 30) unlockAchievement('speed_demon');
+
+      var isNewRecord = false;
+      var key = totalTime.toString();
+      if (!records[key]) records[key] = [];
+      
+      var nick = document.getElementById('nicknameInput').value.trim() || 'Игрок';
+      
+      if (records[key].length < 3 || count > parseInt(records[key][0])) {
+        records[key].push(count);
+        records[key].sort(function(a, b) { return b - a; });
+        if (records[key].length > 3) records[key].pop();
+        localStorage.setItem('kpsRecordsPro', JSON.stringify(records));
+        
+        if (count === records[key][0]) {
+          isNewRecord = true;
+          if (isSoundEnabled) playSound('record');
+          createConfetti();
+          appEl.classList.add('record-flash', 'shake');
+          setTimeout(function() { appEl.classList.remove('record-flash', 'shake'); }, 1000);
+        }
+      }
+
+      var r = records[key] || [];
+      document.getElementById('best1').textContent = r[0] ? r[0] + ' кл.' : '-';
+      document.getElementById('best2').textContent = r[1] ? r[1] + ' кл.' : '-';
+      document.getElementById('best3').textContent = r[2] ? r[2] + ' кл.' : '-';
+
+      var resultText = 'Финиш! Кликов: ' + count + ' | Средний KPS: ' + avgKps + ' | Пик: ' + maxKps.toFixed(1);
+      if (isNewRecord) setStatus('🏆 НОВЫЙ РЕКОРД! ' + resultText, 'record');
+      else setStatus(resultText, 'finished');
+    }
+
+    function recalcKps() {
+      var now = Date.now();
+      while (hitTimestamps.length && now - hitTimestamps[0] > KPS_WINDOW) { hitTimestamps.shift(); }
+      
+      if (testState === 'running') {
+        var currentKps = hitTimestamps.length;
+        if (currentKps > maxKps) maxKps = currentKps;
+
+        kpsEl.textContent = currentKps.toFixed(1);
+        if (currentKps > 0) kpsEl.classList.remove('dim');
+        else kpsEl.classList.add('dim');
+
+        if (graphContainer.classList.contains('visible')) {
+          graphData.push(currentKps);
+          if (graphData.length > 30) graphData.shift();
+          
+          var bars = graphContainer.querySelectorAll('.graph-bar');
+          var maxVal = Math.max(10, ...graphData);
+          bars.forEach(function(b, i) {
+            var val = graphData[i] || 0;
+            var heightPercent = (val / maxVal) * 100;
+            b.style.height = Math.max(2, heightPercent) + '%';
+            if (heightPercent > 70) b.style.background = '#ff6b6b';
+            else if (heightPercent > 40) b.style.background = '#ffb347';
+            else b.style.background = '#667eea';
+          });
+        }
+      }
+    }
+
+    function increment(letter) {
+      if (testState === 'ready') startTest();
+      
+      if (testState === 'running') {
+        if (isMirrorMode) {
+          if (letter !== mirrorTarget && ruMap[letter] !== mirrorTarget) {
+            setStatus('❌ Не та клавиша!', 'record');
+            return;
+          } else pickNewMirrorTarget();
+        }
+
+        count = count + 1;
+        counterEl.textContent = String(count);
+        flashKey(letter);
+        if (isSoundEnabled) playSound('click');
+        hitTimestamps.push(Date.now());
+        
+        if (hitTimestamps.length >= 2) {
+          var timeDiff = hitTimestamps[hitTimestamps.length-1] - hitTimestamps[hitTimestamps.length-2];
+          if (timeDiff > 500 && timeDiff < 1500) unlockAchievement('perfect');
+        }
+      }
+    }
+
+    var audioCtx = null;
+    function playSound(type) {
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        var osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+        if (type === 'click') {
+          osc.type = 'sine'; osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(300, audioCtx.currentTime + 0.05);
+          gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
+          osc.start(); osc.stop(audioCtx.currentTime + 0.05);
+        } else if (type === 'record') {
+          osc.type = 'square'; osc.frequency.setValueAtTime(440, audioCtx.currentTime);
+          osc.frequency.setValueAtTime(554, audioCtx.currentTime + 0.1);
+          osc.frequency.setValueAtTime(659, audioCtx.currentTime + 0.2);
+          osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.3);
+          gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.6);
+          osc.start(); osc.stop(audioCtx.currentTime + 0.6);
+        }
+        osc.connect(gain); gain.connect(audioCtx.destination);
+      } catch (e) {}
+    }
+
+    function createConfetti() {
+      var colors = ['#ffd700', '#ff6b6b', '#667eea', '#67e8a0', '#ffb347'];
+      for (var i = 0; i < 40; i++) {
+        var c = document.createElement('div');
+        c.className = 'confetti';
+        c.style.left = Math.random() * 100 + 'vw';
+        c.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+        c.style.animation = 'fall ' + (Math.random() * 2 + 1) + 's linear forwards';
+        c.style.animationDelay = Math.random() * 0.5 + 's';
+        document.body.appendChild(c);
+        setTimeout(function(el) { el.remove(); }.bind(null, c), 3500);
+      }
+    }
+
+    var ruMap = { 'Ц':'W', 'В':'D', 'А':'F', 'Е':'T', 'Й':'Q', 'К':'R', 'У':'E', 'С':'C', 'М':'V', 'И':'B', 'Ч':'X', 'Г':'P', 'Ш':'I', 'Щ':'O', 'З':'P', 'Х':'[', 'Ъ':']', 'Ж':';', 'Э':"'", 'Б':',', 'Ю':'.' };
+
+    document.addEventListener('keydown', function(e) {
+      if (e.target === keysInput || e.target === customInput || e.target === goalClicksInput || e.target === nicknameInput) return;
+      if (e.ctrlKey || e.altKey || e.metaKey) return;
+      if (e.repeat) return;
+
+      var letter = (e.key || '').toUpperCase();
+      var mappedLetter = ruMap[letter] || letter;
+
+      if (activeKeys.indexOf(letter) !== -1 || activeKeys.indexOf(mappedLetter) !== -1) {
+        if (testState === 'running') e.preventDefault();
+        increment(letter);
+      }
+    });
+
+    document.querySelectorAll('.timer-btn[data-time]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var sec = parseInt(this.getAttribute('data-time'), 10);
+        prepareTest(sec);
+      });
+    });
+
+    btnCustom.addEventListener('click', function() {
+      if (testState === 'running') return;
+      if (customInput.style.display === 'none') {
+        customInput.style.display = 'inline-block';
+        customInput.focus();
+      } else {
+        var val = parseInt(customInput.value, 10);
+        if (val > 0) prepareTest(val);
+      }
+    });
+
+    customInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        var val = parseInt(this.value, 10);
+        if (val > 0) { prepareTest(val); customInput.style.display = 'none'; }
+      }
+    });
+
+    cancelBtn.addEventListener('click', function() { resetTest(); });
+
+    init();
+  };
+</script>
+</body>
+</html>
